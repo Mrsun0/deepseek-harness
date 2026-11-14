@@ -1,5 +1,5 @@
 /**
- * Parse process listings, arrange executable paths as a file tree, and keep one Console per process.
+ * Parse process listings, normalize executable paths for the workspace file tree, and keep one Console per process.
  * @module @deepseek-ai/dsh-program-console/process-list
  */
 
@@ -82,81 +82,51 @@ function parseProcessLine(line: string): ListedProcess | undefined {
   return { pid, start, exe, commandLine: commandLine.length > 0 ? commandLine : pidText }
 }
 
-/** One directory or file in the executable path tree. */
-export interface ProgramTreeNode {
-  /** Final path segment. */
-  readonly name: string
-  /** Executable path through this segment, keeping the path's own separators. */
+/** One executable path, using `/` so the workspace file tree can split it. */
+export interface ProgramPathEntry {
+  /** Full path. Intermediate directories are not entries. */
   readonly path: string
-  /** Segments beneath this one. Empty when no executable resolved further down. */
-  readonly children: readonly ProgramTreeNode[]
-  /** Processes whose executable is exactly this path. Empty when the path is only a directory. */
-  readonly processes: readonly ListedProcess[]
-}
-
-interface MutableTreeNode {
-  name: string
-  path: string
-  children: Map<string, MutableTreeNode>
-  processes: ListedProcess[]
+  /** Final segment, drawn as the row name. */
+  readonly name: string
 }
 
 /**
- * Split an executable path into segments and the path through each segment.
+ * Turn one executable path into a workspace-file-tree key.
+ * `\` becomes `/`, repeated separators collapse, and a trailing separator is dropped.
  * @param exe - Resolved executable path.
- * @returns segments in path order. A path with no name is empty.
+ * @returns the path and its final segment, or undefined when the path has no file name.
  */
-function pathSegments(exe: string): { name: string; path: string }[] {
-  const segments: { name: string; path: string }[] = []
-  for (const match of exe.matchAll(/[^/\\]+/g)) {
-    segments.push({ name: match[0], path: exe.slice(0, match.index + match[0].length) })
-  }
-  return segments
+function treePath(exe: string): ProgramPathEntry | undefined {
+  const unified = exe.replaceAll('\\', '/').replaceAll(/\/+/g, '/')
+  const path = unified.length > 1 && unified.endsWith('/') ? unified.slice(0, -1) : unified
+  if (path.length === 0 || path === '/') return undefined
+  const slash = path.lastIndexOf('/')
+  return { path, name: slash < 0 ? path : path.slice(slash + 1) }
 }
 
 /**
- * Freeze one level with directories before files and each group ordered by name.
- * @param level - Mutable nodes that share one parent.
- * @returns the level the browse page renders.
- */
-function freezeTree(level: ReadonlyMap<string, MutableTreeNode>): ProgramTreeNode[] {
-  const nodes = [...level.values()].map(node => ({
-    name: node.name,
-    path: node.path,
-    children: freezeTree(node.children),
-    processes: node.processes,
-  }))
-  nodes.sort((left, right) => {
-    const group = Number(right.children.length > 0) - Number(left.children.length > 0)
-    if (group !== 0) return group
-    return left.name.localeCompare(right.name, 'en')
-  })
-  return nodes
-}
-
-/**
- * Build a file tree from executable paths.
- * A directory exists only as an ancestor of a file, and a file exists only when at least one process resolved to that path.
- * A path that is itself an executable and also a prefix of a deeper one keeps both its processes and its children.
+ * Normalize executable paths for the workspace file tree and keep the processes on each path.
+ * A path that is also a prefix of a deeper executable stays an entry.
+ * The tree draws that row as a directory, and the row still lists its processes.
  * @param processes - Processes with readable executable paths.
- * @returns root segments. Paths with no file name are omitted.
+ * @returns entries in first-seen order, and the processes for each path. A path with no file name is omitted.
  */
-export function fileTree(processes: readonly ListedProcess[]): ProgramTreeNode[] {
-  const roots = new Map<string, MutableTreeNode>()
+export function programPaths(processes: readonly ListedProcess[]): {
+  readonly entries: readonly ProgramPathEntry[]
+  readonly byPath: ReadonlyMap<string, readonly ListedProcess[]>
+} {
+  const byPath = new Map<string, ListedProcess[]>()
+  const entries: ProgramPathEntry[] = []
   for (const entry of processes) {
-    const segments = pathSegments(entry.exe)
-    let level = roots
-    for (const [index, segment] of segments.entries()) {
-      let node = level.get(segment.name)
-      if (node === undefined) {
-        node = { name: segment.name, path: segment.path, children: new Map(), processes: [] }
-        level.set(segment.name, node)
-      }
-      if (index === segments.length - 1) node.processes.push(entry)
-      level = node.children
-    }
+    const path = treePath(entry.exe)
+    if (path === undefined) continue
+    const list = byPath.get(path.path)
+    if (list === undefined) {
+      byPath.set(path.path, [entry])
+      entries.push(path)
+    } else list.push(entry)
   }
-  return freezeTree(roots)
+  return { entries, byPath }
 }
 
 /**

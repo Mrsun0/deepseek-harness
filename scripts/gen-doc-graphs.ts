@@ -979,6 +979,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Provider adapters dispatch authenticated deliveries; trusted plugins register independent process-local rules, and the runtime turns non-null results into ordinary Workspace-backed Sessions without delivery or completion state.',
   },
   {
+    key: 'programConsole',
+    pkg: 'program-console',
+    title: 'Experimental process console',
+    mode: 'service',
+    note: 'Binds one sidebar Console to one process, lists processes by executable path, and launches commands through subprocess.spawn.',
+  },
+  {
     key: 'lsp',
     pkg: 'lsp',
     title: 'Language-server navigation seam',

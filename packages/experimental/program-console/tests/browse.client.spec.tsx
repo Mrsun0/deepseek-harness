@@ -2,15 +2,19 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createElement } from 'react'
+import { createElement, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { FileTreeInput, TreeEntry } from '@deepseek-ai/dsh-client-ui-sidebar-files/client'
+import { en as filesEn } from '@deepseek-ai/dsh-client-ui-sidebar-files/src/client/locales.ts'
+import { FileTree } from '@deepseek-ai/dsh-client-ui-sidebar-files/src/client/FileTree.tsx'
+import type { FactoryComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots'
 import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { consoleAddress } from '../src/process-list.ts'
 import type { ConsoleBinding, ConsoleOpenResult, ListedProcess } from '../src/types.ts'
-import { ProgramBrowse } from '../src/client/Browse.tsx'
+import { ProcessAccessory, ProgramBrowse, type ProgramBrowseProps } from '../src/client/Browse.tsx'
 import { ConsoleBody, ConsolePane, ConsoleTitle } from '../src/client/ConsolePane.tsx'
 import { browseDefinition, processDefinition } from '../src/client/definition.ts'
 import { apply } from '../src/client/index.ts'
@@ -18,10 +22,49 @@ import { ConsoleOpener } from '../src/client/Opener.tsx'
 
 const t = (key: string): string => key
 
+/** The row marker comes from the workspace file tree. */
 function processToggle(path: string): HTMLElement {
-  const button = document.querySelector(`[data-program-console-path="${path}"] > div > button[aria-label]`)
+  const button = document.querySelector(`[data-files-path="${path}"] > div button[aria-label="browse.showProcesses"]`)
   if (!(button instanceof HTMLElement)) throw new Error(`missing process toggle for ${path}`)
   return button
+}
+
+type FilesTreeProps = FactoryComponentPropsOf<'sidebar.files.tree'>
+
+const filesT: FilesTreeProps['t'] = (key) => {
+  const dictionary: Record<string, string> = filesEn
+  return dictionary[key] ?? key
+}
+
+const unusedFactory: FilesTreeProps['renderFactorySlot'] = () => null
+
+function renderFactorySlot(
+  name: 'sidebar.files.tree',
+  props: FileTreeInput,
+  options?: {
+    slots?: { accessory?: (props: { readonly entry: TreeEntry }) => ReactNode }
+    fallback?: ReactNode
+  },
+): ReactNode {
+  if (name !== 'sidebar.files.tree') return options?.fallback ?? null
+  const accessory = options?.slots?.accessory
+  // The slot renderer supplies the remaining factory props. This passes the entries and the accessory.
+  return createElement(FileTree, {
+    ...props,
+    t: filesT,
+    renderFactorySlot: unusedFactory,
+    useFactorySlot: (_name, fallback) => accessory ?? fallback,
+  } as FilesTreeProps)
+}
+
+function renderBrowse(props: Omit<ProgramBrowseProps, 't' | 'renderFactorySlot'>): ReturnType<typeof render> {
+  return render(createElement(ProgramBrowse, { t, renderFactorySlot, ...props }))
+}
+
+function hoverMedia(matches: boolean): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query === '(hover: hover)' && matches,
+  }))
 }
 const row: ListedProcess = { pid: 7, start: '70', exe: '/usr/bin/node', commandLine: 'node loop' }
 
@@ -32,11 +75,10 @@ function binding(sessionId: string): ConsoleBinding {
 }
 
 /** jsdom does not load CSS modules, so the scroll test installs the browse sheet itself. */
-function installBrowseStyles(treeClass: string, windowClass: string): HTMLStyleElement {
+function installBrowseStyles(windowClass: string): HTMLStyleElement {
   const directory = dirname(fileURLToPath(import.meta.url))
   const text = readFileSync(resolve(directory, '../src/client/Browse.module.css'), 'utf8')
     .replaceAll('.processWindow', `.${windowClass}`)
-    .replaceAll('.tree', `.${treeClass}`)
   const stylesheet = document.createElement('style')
   stylesheet.textContent = text
   document.head.append(stylesheet)
@@ -44,39 +86,42 @@ function installBrowseStyles(treeClass: string, windowClass: string): HTMLStyleE
 }
 
 describe('program console browse', () => {
-  afterEach(() => { document.body.innerHTML = '' })
+  beforeEach(() => { hoverMedia(true) })
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
 
   it('shows an empty list, a failed list, and ignores a list that finishes after unmount', async () => {
-    const failed = render(createElement(ProgramBrowse, {
-      t, list: () => Promise.reject(new Error('down')), launch: async () => {}, openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
-    }))
+    const failed = renderBrowse({
+      list: () => Promise.reject(new Error('down')), launch: async () => {}, openProcess: async () => 'opened',
+    })
     expect(await screen.findByText('browse.listFailed')).toBeTruthy()
     failed.unmount()
 
-    const empty = render(createElement(ProgramBrowse, {
-      t, list: () => Promise.resolve([]), launch: async () => {}, openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
-    }))
+    const empty = renderBrowse({
+      list: () => Promise.resolve([]), launch: async () => {}, openProcess: async () => 'opened',
+    })
     expect(await screen.findByText('browse.empty')).toBeTruthy()
     fireEvent.click(screen.getByText('browse.refresh'))
     expect(await screen.findByText('browse.empty')).toBeTruthy()
     empty.unmount()
 
     let resolveRows: (rows: readonly ListedProcess[]) => void = () => {}
-    const resolved = render(createElement(ProgramBrowse, {
-      t,
+    const resolved = renderBrowse({
       list: () => new Promise<readonly ListedProcess[]>((resolve) => { resolveRows = resolve }),
       launch: async () => {},
-      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
-    }))
+      openProcess: async () => 'opened',
+    })
     resolved.unmount()
     resolveRows([row])
     let rejectRows: (error: Error) => void = () => {}
-    const rejected = render(createElement(ProgramBrowse, {
-      t,
+    const rejected = renderBrowse({
       list: () => new Promise<readonly ListedProcess[]>((_resolve, reject) => { rejectRows = reject }),
       launch: async () => {},
-      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
-    }))
+      openProcess: async () => 'opened',
+    })
     rejected.unmount()
     rejectRows(new Error('late'))
     await Promise.resolve()
@@ -87,12 +132,11 @@ describe('program console browse', () => {
     const launch = vi.fn<(command: string) => Promise<void>>()
     launch.mockResolvedValue(undefined)
     const prefix = { ...row, pid: 4, start: '40', exe: '/usr/bin', commandLine: 'bin itself' }
-    const view = render(createElement(ProgramBrowse, {
-      t,
+    const view = renderBrowse({
       list: () => Promise.resolve([row, { ...row, pid: 8, start: '80', commandLine: 'node other' }, prefix]),
       launch,
       openProcess: async () => outcome,
-    }))
+    })
     expect(await screen.findByText('usr')).toBeTruthy()
     expect(screen.queryByText('bin')).toBeNull()
     fireEvent.click(screen.getByText('usr'))
@@ -100,18 +144,17 @@ describe('program console browse', () => {
     expect(screen.getByText('node')).toBeTruthy()
     expect(screen.queryByText('node loop')).toBeNull()
     expect(screen.queryByText('bin itself')).toBeNull()
-    fireEvent.click(processToggle('/usr/bin'))
-    expect(screen.getByText('bin itself')).toBeTruthy()
-    fireEvent.click(processToggle('/usr/bin'))
-    expect(screen.queryByText('bin itself')).toBeNull()
     fireEvent.click(screen.getByText('node'))
+    expect(screen.queryByText('node loop')).toBeNull()
+    const nodeToggle = processToggle('/usr/bin/node')
+    fireEvent.pointerEnter(nodeToggle, { pointerType: 'mouse' })
+    fireEvent.click(nodeToggle)
     fireEvent.click(screen.getByText('node loop'))
     expect(await screen.findByText('browse.taken')).toBeTruthy()
     outcome = 'opened'
+    fireEvent.pointerEnter(nodeToggle, { pointerType: 'mouse' })
     fireEvent.click(screen.getByText('node other'))
     await waitFor(() => { expect(screen.queryByText('browse.taken')).toBeNull() })
-    fireEvent.click(screen.getByText('node'))
-    expect(screen.queryByText('node loop')).toBeNull()
     fireEvent.click(screen.getByText('bin'))
     expect(screen.queryByText('node')).toBeNull()
 
@@ -140,23 +183,124 @@ describe('program console browse', () => {
       exe: '/bin/true',
       commandLine: `true ${String(index)}`,
     }))
-    const view = render(createElement(ProgramBrowse, {
-      t,
+    const previousHeight = window.innerHeight
+    const previousWidth = window.innerWidth
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 })
+    const view = renderBrowse({
       list: () => Promise.resolve(many),
       launch: async () => {},
-      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
-    }))
+      openProcess: async () => 'opened',
+    })
     fireEvent.click(await screen.findByText('bin'))
-    fireEvent.click(screen.getByText('true'))
-    const processWindow = view.container.querySelector('[data-program-console="processes"]')
-    const tree = processWindow?.parentElement?.parentElement?.parentElement
-    if (!(processWindow instanceof HTMLElement) || !(tree instanceof HTMLElement)) throw new Error('missing process window')
-    const stylesheet = installBrowseStyles(tree.className, processWindow.className)
+    const toggle = processToggle('/bin/true')
+    let rect = new DOMRect(0, 100, 16, 16)
+    vi.spyOn(toggle, 'getBoundingClientRect').mockImplementation(() => rect)
+    fireEvent.pointerEnter(toggle, { pointerType: 'mouse' })
+    const processWindow = document.querySelector('[data-program-console="processes"]')
+    if (!(processWindow instanceof HTMLElement)) throw new Error('missing process window')
+    const stylesheet = installBrowseStyles(processWindow.className)
+    expect(getComputedStyle(processWindow).position).toBe('fixed')
     expect(getComputedStyle(processWindow).overflowY).toBe('auto')
     expect(getComputedStyle(processWindow).maxHeight).toBe('calc(10 * var(--program-console-row))')
-    expect(getComputedStyle(tree).getPropertyValue('--program-console-row').trim()).toBe('32px')
+    expect(getComputedStyle(processWindow).getPropertyValue('--program-console-row').trim()).toBe('32px')
+    expect(processWindow.style.top).toBe('116px')
     stylesheet.remove()
+    rect = new DOMRect(0, 20, 16, 16)
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 100 })
+    fireEvent.scroll(window)
+    expect(processWindow.style.top).toBe('36px')
+    rect = new DOMRect(0, 350, 16, 16)
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 })
+    fireEvent.resize(window)
+    expect(processWindow.style.top).toBe('30px')
     for (let index = 0; index < 11; index += 1) expect(screen.getByText(`true ${String(index)}`)).toBeTruthy()
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: previousHeight })
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth })
+    view.unmount()
+  })
+
+  it('opens a normalized windows path from the triangle', async () => {
+    const view = renderBrowse({
+      list: () => Promise.resolve([{ ...row, exe: 'C:\\Windows\\node.exe', commandLine: 'windows node' }]),
+      launch: async () => {},
+      openProcess: async () => 'opened',
+    })
+    fireEvent.click(await screen.findByText('C:'))
+    fireEvent.click(screen.getByText('Windows'))
+    fireEvent.pointerEnter(processToggle('C:/Windows/node.exe'), { pointerType: 'touch' })
+    fireEvent.pointerLeave(processToggle('C:/Windows/node.exe'), { pointerType: 'touch' })
+    vi.spyOn(HTMLElement.prototype, 'matches').mockReturnValue(false)
+    fireEvent.focus(processToggle('C:/Windows/node.exe'))
+    expect(screen.queryByText('windows node')).toBeNull()
+    const toggle = processToggle('C:/Windows/node.exe')
+    fireEvent.pointerLeave(toggle, { pointerType: 'mouse', relatedTarget: document.body })
+    fireEvent.pointerEnter(toggle, { pointerType: 'mouse' })
+    const panel = document.querySelector('[data-program-console="processes"]')
+    if (!(panel instanceof HTMLElement)) throw new Error('missing process window')
+    fireEvent.pointerLeave(toggle, { pointerType: 'mouse', relatedTarget: panel })
+    expect(screen.getByText('windows node')).toBeTruthy()
+    fireEvent.pointerLeave(toggle, { pointerType: 'mouse', relatedTarget: null })
+    fireEvent.pointerEnter(panel, { pointerType: 'mouse' })
+    await new Promise((resolve) => { setTimeout(resolve, 250) })
+    expect(screen.getByText('windows node')).toBeTruthy()
+    fireEvent.pointerLeave(panel, { pointerType: 'mouse', relatedTarget: document.body })
+    await waitFor(() => { expect(screen.queryByText('windows node')).toBeNull() })
+    view.unmount()
+  })
+
+  it('toggles the process window when the pointer cannot hover', async () => {
+    hoverMedia(false)
+    const view = renderBrowse({
+      list: () => Promise.resolve([row]),
+      launch: async () => {},
+      openProcess: async () => 'opened',
+    })
+    fireEvent.click(await screen.findByText('usr'))
+    fireEvent.click(screen.getByText('bin'))
+    const toggle = processToggle('/usr/bin/node')
+    fireEvent.pointerEnter(toggle, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(toggle, { pointerType: 'mouse', relatedTarget: document.body })
+    expect(screen.queryByText('node loop')).toBeNull()
+    fireEvent.click(toggle)
+    expect(screen.getByText('node loop')).toBeTruthy()
+    fireEvent.pointerDown(toggle)
+    fireEvent.pointerDown(screen.getByText('node loop'))
+    expect(screen.getByText('node loop')).toBeTruthy()
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByText('node loop')).toBeNull()
+    fireEvent.click(toggle)
+    fireEvent.click(toggle)
+    expect(screen.queryByText('node loop')).toBeNull()
+    view.unmount()
+  })
+
+  it('opens the process window from the keyboard and keeps it while focus stays inside', async () => {
+    const view = renderBrowse({
+      list: () => Promise.resolve([row]),
+      launch: async () => {},
+      openProcess: async () => 'opened',
+    })
+    fireEvent.click(await screen.findByText('usr'))
+    fireEvent.click(screen.getByText('bin'))
+    vi.spyOn(HTMLElement.prototype, 'matches').mockImplementation(selector => selector === ':focus-visible')
+    const toggle = processToggle('/usr/bin/node')
+    fireEvent.focus(toggle)
+    const option = screen.getByText('node loop')
+    fireEvent.blur(toggle, { relatedTarget: option })
+    expect(screen.getByText('node loop')).toBeTruthy()
+    fireEvent.focus(option)
+    fireEvent.blur(option, { relatedTarget: toggle })
+    expect(screen.getByText('node loop')).toBeTruthy()
+    fireEvent.blur(option, { relatedTarget: null })
+    expect(screen.queryByText('node loop')).toBeNull()
+    view.unmount()
+  })
+
+  it('draws no triangle outside the browse page', () => {
+    const entry: TreeEntry = { path: '/usr/bin/node', name: 'node' }
+    const view = render(createElement(ProcessAccessory, { entry }))
+    expect(view.container.querySelector('button')).toBeNull()
     view.unmount()
   })
 

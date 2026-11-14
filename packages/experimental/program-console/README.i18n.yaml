@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/program-console/README.md
 /:
-  en: 5b86fe5a8cb8a53c
-  zh: 025515129884849e
+  en: ba7f55fa0a1cbdf8
+  zh: b113b54c92740af4
 /deepseek-ai-dsh-program-console:
   en: cff168f37606ab6d
   zh: a1fe84994435b785
 /deepseek-ai-dsh-program-console/summary:
   en: acac3882e30e8d52
-  zh: 672403623f5dbd87
+  zh: 86ee62fd0d57ddb3
 /deepseek-ai-dsh-program-console/table-of-contents:
-  en: 915fd82850e37f7d
-  zh: b11a85561428caf8
+  en: d4e9596852e22009
+  zh: da80980e684665e2
 /deepseek-ai-dsh-program-console/use-this-package:
-  en: defd2b5493b686c1
-  zh: 093f6fe83da66173
+  en: e6aee718a0e822d2
+  zh: 1a86a98b98f501a0
 /deepseek-ai-dsh-program-console/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -36,5 +36,8 @@
   en: ed4c49c18c864d32
   zh: 0192c2ae9ed803f1
 /deepseek-ai-dsh-program-console/known-limitations-and-deferred-work:
-  en: f6c92cebe3c071b0
-  zh: 7b814baaccb98fad
+  en: a5bfd18ba9fe05ab
+  zh: 144db99a37d523ed
+/deepseek-ai-dsh-program-console/known-limitations-and-deferred-work/dev-note:
+  en: b3e92812c453d725
+  zh: 785fdc190a8e154d

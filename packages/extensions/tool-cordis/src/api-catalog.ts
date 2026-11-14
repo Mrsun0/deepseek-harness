@@ -2726,6 +2726,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'programConsole',
+    summary: 'One Console per process.',
+    description: 'One Console per process. User launch and a matching bash or pwsh result both call ensureConsole. Launch uses `subprocess.spawn`, never a terminal.',
+    methods: [
+      {
+        signature: '@Remote async list(agent: Agent): Promise<ListedProcess[]>',
+        description: 'List processes whose executable path the platform command could read.',
+        parameters: [{ name: 'agent', description: 'Caller. The list is the host process table, not session-private.' }],
+        returns: 'processes grouped later by executable path. Unreadable paths are absent.',
+      },
+      {
+        signature: '@Remote async open(agent: Agent, pid: number, start: string): Promise<ConsoleOpenResult>',
+        description: 'Focus the Console for a process, or create it when none is bound.',
+        parameters: [{ name: 'agent', description: 'Session asking for the Console.' }, { name: 'pid', description: 'Process id from {@link list}.' }, { name: 'start', description: 'Start time from {@link list}, so a reused pid does not reuse the old Console.' }],
+        returns: 'the single Console for that process.',
+        throws: ['HarnessError `PROGRAM_CONSOLE_PROCESS_MISSING` when the process is not in the current listing.'],
+      },
+      {
+        signature: '@Remote async launch(agent: Agent, command: string): Promise<ConsoleOpenResult>',
+        description: 'Run a command with `cmd.exe /d /s /c` or `bash -c`, then bind a Console to the new process.',
+        parameters: [{ name: 'agent', description: 'Session that will own the Console when the process has none.' }, { name: 'command', description: 'The full command from the dialog. It is one argument to the system shell.' }],
+        returns: 'the Console for the process the command left running.',
+        throws: ['HarnessError `PROGRAM_CONSOLE_COMMAND_EMPTY` when `command` is blank.', 'HarnessError `PROGRAM_CONSOLE_LAUNCH_NOT_FOUND` when enumeration never sees a matching program.'],
+      },
+      {
+        signature: '@Remote consoles(agent: Agent): Promise<ConsoleBinding[]>',
+        description: 'Consoles created on this host.',
+        parameters: [{ name: 'agent', description: 'Caller. The client filters to its own session when opening a tab.' }],
+        returns: 'every binding. A process has at most one.',
+      },
+    ],
+  },
+  {
     key: 'ptcRuntime',
     summary: 'Registers one `ctx.ptcRuntime` implementation.',
     description: 'Registers one `ctx.ptcRuntime` implementation. Program, budget, abort, and substrate failures resolve in PtcRunResult; only Service Definition contract misuse rejects, with PtcRuntimeError. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate distinct state owners, and terminate and await in-flight runs during disposal.',
@@ -6471,6 +6504,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ConnectionTrustRequest {\n    readonly headers: Headers | Readonly<Record<string, string | readonly string[] | undefined>>;\n    readonly signal?: AbortSignal | undefined;\n    readonly socket?: {\n        readonly destroyed: boolean;\n    } | undefined;\n    readonly method?: string | undefined;\n    readonly url?: string | undefined;\n}',
   },
   {
+    name: 'ConsoleBinding',
+    declaration: 'export interface ConsoleBinding {\n    readonly key: string;\n    readonly pid: number;\n    readonly start: string;\n    readonly exe: string;\n    readonly commandLine: string;\n    readonly sessionId: string;\n    readonly createdAt: number;\n}',
+  },
+  {
+    name: 'ConsoleOpenResult',
+    declaration: 'export interface ConsoleOpenResult {\n    readonly binding: ConsoleBinding;\n    readonly created: boolean;\n}',
+  },
+  {
     name: 'ContentBlockMap',
     declaration: 'export interface ContentBlockMap {\n    \'text\': TextBlock;\n    \'reasoning\': ReasoningBlock;\n    \'image\': ImageBlock;\n    \'file\': FileBlock;\n    \'tool-call\': ToolCallBlock;\n    \'tool-addition\': ToolAdditionBlock;\n    \'tool-removal\': ToolRemovalBlock;\n}',
   },
@@ -7545,6 +7586,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'KvUnitDescriptor',
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n    readonly layout?: \'single\' | \'per-record\';\n    readonly compatibleVersions?: readonly number[];\n}',
+  },
+  {
+    name: 'ListedProcess',
+    declaration: 'export interface ListedProcess {\n    readonly pid: number;\n    readonly start: string;\n    readonly exe: string;\n    readonly commandLine: string;\n}',
   },
   {
     name: 'ListVersionsOptions',

@@ -3,7 +3,7 @@ import {
   chooseLaunched,
   consoleAddress,
   ensureConsole,
-  fileTree,
+  programPaths,
   groupByExe,
   keyFromAddress,
   normalizeCommand,
@@ -41,39 +41,38 @@ describe('process list', () => {
     ])
   })
 
-  it('builds a file tree and keeps processes only on the executable path', () => {
-    expect(fileTree([])).toEqual([])
-    expect(fileTree([{ ...node, exe: '///' }])).toEqual([])
-    const child = { ...node, exe: '/opt/sub/node', commandLine: 'child' }
+  it('normalizes executable paths for the workspace file tree', () => {
+    expect(programPaths([])).toEqual({ entries: [], byPath: new Map() })
+    expect(programPaths([
+      { ...node, exe: '///' },
+      { ...node, exe: '' },
+      { ...node, exe: '\\' },
+      { ...node, exe: '/' },
+    ])).toEqual({ entries: [], byPath: new Map() })
+    const child = { ...node, exe: '/opt//sub/node/', commandLine: 'child' }
     const leaf = { ...node, pid: 12, exe: '/opt/file', commandLine: 'leaf' }
     const windows = { ...node, pid: 13, exe: 'C:\\Windows\\node.exe', commandLine: 'windows' }
     const prefix = { ...bash, exe: '/usr/bin', commandLine: 'bin itself' }
-    expect(fileTree([leaf, child, windows, node, { ...node, pid: 11 }, prefix])).toEqual([
-      {
-        name: 'C:', path: 'C:', processes: [], children: [
-          { name: 'Windows', path: 'C:\\Windows', processes: [], children: [
-            { name: 'node.exe', path: 'C:\\Windows\\node.exe', processes: [windows], children: [] },
-          ] },
-        ],
-      },
-      {
-        name: 'opt', path: '/opt', processes: [], children: [
-          { name: 'sub', path: '/opt/sub', processes: [], children: [
-            { name: 'node', path: '/opt/sub/node', processes: [child], children: [] },
-          ] },
-          { name: 'file', path: '/opt/file', processes: [leaf], children: [] },
-        ],
-      },
-      {
-        name: 'usr', path: '/usr', processes: [], children: [
-          {
-            name: 'bin', path: '/usr/bin', processes: [prefix], children: [
-              { name: 'node', path: '/usr/bin/node', processes: [node, { ...node, pid: 11 }], children: [] },
-            ],
-          },
-        ],
-      },
-    ])
+    const bare = { ...node, pid: 14, exe: 'node', commandLine: 'bare' }
+    const same = { ...node, pid: 11, exe: '\\usr\\bin\\node' }
+    expect(programPaths([leaf, child, windows, node, same, prefix, bare])).toEqual({
+      entries: [
+        { path: '/opt/file', name: 'file' },
+        { path: '/opt/sub/node', name: 'node' },
+        { path: 'C:/Windows/node.exe', name: 'node.exe' },
+        { path: '/usr/bin/node', name: 'node' },
+        { path: '/usr/bin', name: 'bin' },
+        { path: 'node', name: 'node' },
+      ],
+      byPath: new Map([
+        ['/opt/file', [leaf]],
+        ['/opt/sub/node', [child]],
+        ['C:/Windows/node.exe', [windows]],
+        ['/usr/bin/node', [node, same]],
+        ['/usr/bin', [prefix]],
+        ['node', [bare]],
+      ]),
+    })
   })
 
   it('groups processes under the executable they resolved to', () => {

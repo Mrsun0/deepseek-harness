@@ -1,6 +1,6 @@
 ---
 description: "Bind one sidebar Console to a process, list programs by executable path, and launch commands without a PTY."
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-program-console
@@ -16,6 +16,7 @@ This experimental plugin lists processes whose executable path can be read, grou
 - [Use this package](#use-this-package)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
 
 ## Use this package
 
@@ -27,7 +28,7 @@ plugins:
     name: '@deepseek-ai/dsh-program-console'
 ```
 
-The guide opens a file tree of executable paths. Directories are the segments above a file, and a file appears only when a process resolved to it. Hovering a file shows a right arrow that opens its processes in a ten-row scrolling window. Choosing a process focuses its Console when one is already bound, including a Console created by another session, and creates one only when the process has none. New command runs the dialog text as `bash -c` on Linux or `cmd.exe /d /s /c` on Windows through `subprocess.spawn`.
+The guide opens the workspace file tree for executable paths. Directories are the segments above a file, and a file appears only when a process resolved to it. A row whose path has processes ends with a right-pointing triangle, and resting the pointer on the triangle opens those processes in a window of at most ten rows. Choosing a process focuses its Console when one is already bound, including a Console created by another session, and creates one only when the process has none. New command runs the dialog text as `bash -c` on Linux or `cmd.exe /d /s /c` on Windows through `subprocess.spawn`.
 
 ## Model Experience
 
@@ -60,3 +61,8 @@ An omitted plugin adds no request content. Loading the skill body changes the pr
 - **No terminal after launch** — bash and pwsh ignore stdin when the caller does not pass one, and this launch does the same. The Console cannot type into the process afterward.
 - **Unreadable executables are omitted** — a process whose path or start time cannot be read does not appear in the tree.
 - **One enumeration after the shell tool returns** — a program that is not visible yet is not bound. The user dialog polls briefly; the shell-tool path does not.
+
+<a id="dev-note"></a>
+### Dev Note
+
+The browse page calls the registered workspace file tree. `@deepseek-ai/dsh-client-ui-sidebar-files` is a development dependency for that tree's input type and for tests. The runtime does not import the tree component.

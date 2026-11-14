@@ -1,13 +1,13 @@
 ---
 description: "按可执行文件列出进程，并在不使用 PTY 的情况下为一个进程绑定一个侧栏控制台。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-program-console
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 这个实验插件列出能读到可执行文件路径的进程，按路径分组，并为一个进程绑定一个侧栏控制台。用户用 `bash -c` 或 `cmd.exe /d /s /c` 启动程序。模型读取内置的 `program-console` skill，再用现有的 bash 或 pwsh 工具执行其中的命令。两条路径都不创建终端。
 
@@ -16,6 +16,7 @@ kind: "package-reference"
 - [使用这个包](#use-this-package)
 - [模型体验](#model-experience)
 - [已知限制与暂缓工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
 
 -----
 
@@ -30,7 +31,7 @@ plugins:
     name: '@deepseek-ai/dsh-program-console'
 ```
 
-入口打开可执行路径的文件树。目录是文件之上的路径分段，文件只在有进程解析到该路径时出现。悬停文件时出现右箭头，展开后的进程在十行窗口里滚动。选择进程时，若已有控制台则聚焦，包括另一个会话创建的控制台；没有时才新建。新建命令在 Linux 上是 `bash -c`，在 Windows 上是 `cmd.exe /d /s /c`，经 `subprocess.spawn` 执行。
+入口用工作区文件树列出可执行路径。目录是文件之上的路径分段，文件只在有进程解析到该路径时出现。有进程的行末尾有一个右向三角，指针放在三角上时弹出这些进程，窗口最多十行。选择进程时，若已有控制台则聚焦，包括另一个会话创建的控制台；没有时才新建。新建命令在 Linux 上是 `bash -c`，在 Windows 上是 `cmd.exe /d /s /c`，经 `subprocess.spawn` 执行。
 
 -----
 
@@ -69,3 +70,8 @@ launch-command: node -e "setInterval(() => {}, 1000000000)"
 - **启动后没有终端** — 未单独传入 stdin 时，bash 和 pwsh 会忽略 stdin，这条启动路径也是如此。控制台之后不能再向该进程键入。
 - **读不到的可执行文件不进树** — 路径或启动时间读失败的进程不会出现。
 - **shell 工具返回后只枚举一次** — 那时还看不见的程序不会被绑定。用户对话框会短暂重试；shell 工具这条路径不会。
+
+<a id="dev-note"></a>
+### 开发备注
+
+浏览页调用已经注册的工作区文件树。`@deepseek-ai/dsh-client-ui-sidebar-files` 只作为开发依赖，供这棵树的输入类型和测试使用。运行时不导入该组件。
