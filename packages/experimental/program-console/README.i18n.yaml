@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/program-console/README.md
+/:
+  en: 5b86fe5a8cb8a53c
+  zh: 025515129884849e
+/deepseek-ai-dsh-program-console:
+  en: cff168f37606ab6d
+  zh: a1fe84994435b785
+/deepseek-ai-dsh-program-console/summary:
+  en: acac3882e30e8d52
+  zh: 672403623f5dbd87
+/deepseek-ai-dsh-program-console/table-of-contents:
+  en: 915fd82850e37f7d
+  zh: b11a85561428caf8
+/deepseek-ai-dsh-program-console/use-this-package:
+  en: bcbe7b906e1ad3e1
+  zh: b08fdc5d9d8a421d
+/deepseek-ai-dsh-program-console/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-program-console/model-experience/program-console-skill:
+  en: 313805866c599257
+  zh: 7235cfe12ee2d51a
+/deepseek-ai-dsh-program-console/model-experience/program-console-skill/what-the-model-sees:
+  en: c92d6d7ca3bb40d9
+  zh: 139941726104755e
+/deepseek-ai-dsh-program-console/model-experience/program-console-skill/what-the-model-sees/program-console-skill-body:
+  en: 3deca3b373033750
+  zh: 262ac865d9f52d98
+/deepseek-ai-dsh-program-console/model-experience/program-console-skill/token-effect:
+  en: d79c98e6fdf59f83
+  zh: 21a5257e2d250a17
+/deepseek-ai-dsh-program-console/model-experience/program-console-skill/kv-cache-effect:
+  en: ed4c49c18c864d32
+  zh: 0192c2ae9ed803f1
+/deepseek-ai-dsh-program-console/known-limitations-and-deferred-work:
+  en: f6c92cebe3c071b0
+  zh: 7b814baaccb98fad

@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "include": ["src/*.ts"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/tools" },
+    { "path": "../../skill/skill" },
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../../typert/protocol" },
+    { "path": "../../util/error" }
+  ]
+}

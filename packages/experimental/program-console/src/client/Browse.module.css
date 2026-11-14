@@ -1,0 +1,49 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  height: 100%;
+  padding: 12px;
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: auto;
+}
+
+.file,
+.process {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process {
+  padding-inline-start: 16px;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-secondary, transparent);
+}
+
+.alert {
+  color: var(--dsw-alias-label-danger, var(--dsw-alias-label-primary));
+}

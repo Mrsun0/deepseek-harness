@@ -1,0 +1,3 @@
+- insert:
+    - id: program-console
+      name: '@deepseek-ai/dsh-program-console'
