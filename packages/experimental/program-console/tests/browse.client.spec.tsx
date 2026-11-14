@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { createElement } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { Context } from '@deepseek-ai/cordis'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { consoleAddress } from '../src/process-list.ts'
-import type { ConsoleBinding, ListedProcess } from '../src/types.ts'
+import type { ConsoleBinding, ConsoleOpenResult, ListedProcess } from '../src/types.ts'
 import { ProgramBrowse } from '../src/client/Browse.tsx'
 import { ConsoleBody, ConsolePane, ConsoleTitle } from '../src/client/ConsolePane.tsx'
 import { browseDefinition, processDefinition } from '../src/client/definition.ts'
@@ -27,13 +27,13 @@ describe('program console browse', () => {
 
   it('shows an empty list, a failed list, and ignores a list that finishes after unmount', async () => {
     const failed = render(createElement(ProgramBrowse, {
-      t, list: () => Promise.reject(new Error('down')), launch: async () => {}, openProcess: async () => 'opened',
+      t, list: () => Promise.reject(new Error('down')), launch: async () => {}, openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
     }))
     expect(await screen.findByText('browse.listFailed')).toBeTruthy()
     failed.unmount()
 
     const empty = render(createElement(ProgramBrowse, {
-      t, list: () => Promise.resolve([]), launch: async () => {}, openProcess: async () => 'opened',
+      t, list: () => Promise.resolve([]), launch: async () => {}, openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
     }))
     expect(await screen.findByText('browse.empty')).toBeTruthy()
     fireEvent.click(screen.getByText('browse.refresh'))
@@ -43,18 +43,18 @@ describe('program console browse', () => {
     let resolveRows: (rows: readonly ListedProcess[]) => void = () => {}
     const resolved = render(createElement(ProgramBrowse, {
       t,
-      list: () => new Promise((resolve) => { resolveRows = resolve }),
+      list: () => new Promise<readonly ListedProcess[]>((resolve) => { resolveRows = resolve }),
       launch: async () => {},
-      openProcess: async () => 'opened',
+      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
     }))
     resolved.unmount()
     resolveRows([row])
     let rejectRows: (error: Error) => void = () => {}
     const rejected = render(createElement(ProgramBrowse, {
       t,
-      list: () => new Promise((_, reject) => { rejectRows = reject }),
+      list: () => new Promise<readonly ListedProcess[]>((_resolve, reject) => { rejectRows = reject }),
       launch: async () => {},
-      openProcess: async () => 'opened',
+      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
     }))
     rejected.unmount()
     rejectRows(new Error('late'))
@@ -121,21 +121,26 @@ describe('program console browse', () => {
     expect(screen.getByText('console.inputUnavailable')).toBeTruthy()
     body.unmount()
 
+    const navigation = (value: string) => ({ address: value, params: undefined, revision: 0 })
     const paneProps = {
-      useTabInfo: () => ({ tab: { navigation: { address } } }),
+      useTabInfo: () => ({ tab: { navigation: navigation(address) } }),
       t: translate,
     } as Parameters<typeof ConsolePane>[0]
     const pane = render(createElement(ConsolePane, paneProps))
     expect(screen.getByText('console.bound')).toBeTruthy()
     pane.unmount()
     const titleProps = {
-      useTabInfo: () => ({ tab: { navigation: { address: 'nope' } } }),
+      useTabInfo: () => ({ tab: { navigation: navigation('nope') } }),
       t: translate,
     } as Parameters<typeof ConsoleTitle>[0]
     const title = render(createElement(ConsoleTitle, titleProps))
     expect(screen.getByText('console.chip')).toBeTruthy()
     title.unmount()
-    const named = render(createElement(ConsoleTitle, { ...titleProps, useTabInfo: () => ({ tab: { navigation: { address } } }) }))
+    const namedProps = {
+      useTabInfo: () => ({ tab: { navigation: navigation(address) } }),
+      t: translate,
+    } as Parameters<typeof ConsoleTitle>[0]
+    const named = render(createElement(ConsoleTitle, namedProps))
     expect(screen.getByText('console.chip 4')).toBeTruthy()
     named.unmount()
 
@@ -148,16 +153,32 @@ describe('program console browse', () => {
   })
 })
 
+interface InjectedCalls {
+  list?: () => Promise<unknown>
+  launch?: (command: string) => Promise<unknown>
+  openProcess?: (pid: number, start: string) => Promise<unknown>
+  watchConsoles?: () => () => void
+}
+
 describe('program console client apply', () => {
   it('mounts the remote and opens a console for this session only', async () => {
-    const entries: { name: string; inject?: (sessionId: SessionId) => Record<string, (...args: never[]) => unknown> }[] = []
+    const entries: { name: string; inject?: (sessionId: SessionId) => InjectedCalls }[] = []
     const openResourceIn = vi.fn()
     const mount = vi.fn(async () => () => {})
     const remote = {
-      list: vi.fn(async () => ({ ok: true as const, value: [] as ListedProcess[] })),
-      launch: vi.fn(async () => ({ ok: true as const, value: { binding: binding('session'), created: true } })),
-      open: vi.fn(async () => ({ ok: true as const, value: { binding: binding('other'), created: false } })),
-      consoles: vi.fn(async () => ({ ok: false as const, error: new Error('down') })),
+      list: vi.fn(async (): Promise<RemoteResult<ListedProcess[]>> => ({ ok: true, value: [] })),
+      launch: vi.fn(async (): Promise<RemoteResult<ConsoleOpenResult>> => ({
+        ok: true,
+        value: { binding: binding('session'), created: true },
+      })),
+      open: vi.fn(async (): Promise<RemoteResult<ConsoleOpenResult>> => ({
+        ok: true,
+        value: { binding: binding('other'), created: false },
+      })),
+      consoles: vi.fn(async (): Promise<RemoteResult<ConsoleBinding[]>> => ({
+        ok: false,
+        error: new RemoteError('gateway/internal', 'down', {}),
+      })),
     }
     const subscribe = vi.fn(() => () => {})
     let bound = false
@@ -169,20 +190,23 @@ describe('program console client apply', () => {
       sessions: { binding: () => bound ? { session: { subscribe } } : undefined },
       slots: {
         inject: (_name: string, factory: () => void) => { factory(); return () => {} },
-        register: (meta: { name: string; inject?: (sessionId: SessionId) => Record<string, (...args: never[]) => unknown> }) => {
+        register: (meta: { name: string; inject?: (sessionId: SessionId) => InjectedCalls }) => {
           entries.push(meta)
           return () => {}
         },
       },
       effect: (run: () => void) => { run() },
-    } as Context
+    } as never
     await apply(ctx)
     expect(mount).toHaveBeenCalledOnce()
     const browse = entries.find(entry => entry.inject !== undefined && entry.name === 'sidebar.right.pane.tab')
     if (browse?.inject === undefined) throw new Error('browse inject missing')
     const actions = browse.inject('session' as SessionId)
+    if (actions.list === undefined || actions.launch === undefined || actions.openProcess === undefined) {
+      throw new Error('browse callbacks missing')
+    }
     await actions.list()
-    remote.list.mockResolvedValueOnce({ ok: false, error: new Error('down') })
+    remote.list.mockResolvedValueOnce({ ok: false, error: new RemoteError('gateway/internal', 'down', {}) })
     await expect(actions.list()).rejects.toThrow('program-console remote call failed')
     await actions.launch('node stay')
     expect(openResourceIn).toHaveBeenCalledOnce()
@@ -193,6 +217,7 @@ describe('program console client apply', () => {
     if (opener?.inject === undefined) throw new Error('opener inject missing')
     const first = opener.inject('session' as SessionId)
     expect(opener.inject('session' as SessionId)).toBe(first)
+    if (first.watchConsoles === undefined) throw new Error('watch missing')
     const release = first.watchConsoles()
     release()
     bound = true
@@ -201,7 +226,9 @@ describe('program console client apply', () => {
       value: [{ ...binding('next'), createdAt: Date.now() }],
     })
     vi.useFakeTimers()
-    const second = opener.inject('next' as SessionId).watchConsoles()
+    const nextWatch = opener.inject('next' as SessionId).watchConsoles
+    if (nextWatch === undefined) throw new Error('watch missing')
+    const second = nextWatch()
     expect(subscribe).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(300)
     await Promise.resolve()

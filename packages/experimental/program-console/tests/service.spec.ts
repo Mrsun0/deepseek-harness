@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { HarnessError } from '@deepseek-ai/dsh-error'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
-import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessHandle, SubprocessOutcome, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -20,11 +20,12 @@ function execution(command: string, caller: Agent | undefined, callId: string): 
   return {
     name: 'bash',
     arguments: { command },
-    agent: caller,
-    callId,
-    rootCallId: callId,
-    token: callId,
-  } as ToolExecution
+    ...(caller === undefined ? {} : { agent: caller }),
+    callId: callId as ToolExecution['callId'],
+    rootCallId: callId as ToolExecution['rootCallId'],
+    token: Symbol(callId) as ToolExecution['token'],
+    signal: new AbortController().signal,
+  }
 }
 
 function success(): ToolExecutionResult {
@@ -35,12 +36,19 @@ function failure(): ToolExecutionResult {
   return { isError: true, error: { message: 'failed' }, content: [] }
 }
 
-function fakeHandle(done: Promise<unknown>, text?: string): SubprocessHandle {
+function fakeHandle(done: Promise<SubprocessOutcome>, text?: string): SubprocessHandle {
   return {
+    stdin: undefined,
+    stdout: undefined,
+    stderr: undefined,
+    control: undefined,
+    collected: text === undefined ? {} : {
+      stdout: { readFrom: () => ({ text, nextOffset: text.length, lossy: false }) },
+    },
     done,
-    terminate: vi.fn(),
-    collected: text === undefined ? {} : { stdout: { readFrom: () => ({ text, nextOffset: text.length, lossy: false }) } },
-  } as SubprocessHandle
+    terminate: () => {},
+    waitForExit: () => Promise.resolve(true),
+  }
 }
 
 async function boot(): Promise<{ ctx: Context; dispose: () => Promise<void> }> {
@@ -130,7 +138,7 @@ describe('program console service', () => {
     let child: SubprocessHandle | undefined
     try {
       await ctx.waterfall('tools/pre-execute', matched, async () => ({ kind: 'allow' as const }))
-      ctx.emit('tools/result', { ...matched, agent: undefined } as ToolExecution, success())
+      ctx.emit('tools/result', execution(PROGRAM_CONSOLE_LAUNCH_COMMAND, undefined, 'call-match'), success())
       expect(await ctx.programConsole.consoles(caller)).toEqual([])
       await ctx.waterfall('tools/pre-execute', other, async () => ({ kind: 'allow' as const }))
       ctx.emit('tools/result', other, success())
