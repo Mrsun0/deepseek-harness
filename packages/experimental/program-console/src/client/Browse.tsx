@@ -1,7 +1,15 @@
-/** Two-level program list: executable paths, then the processes that resolved to each path. */
+/** File tree of executable paths, with one extra process level on each file. */
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { groupByExe } from '../process-list.ts'
+import {
+  Button,
+  FileTypeIcon,
+  IconChevronDownOutlineRegular,
+  IconChevronRightOutlineRegular,
+  IconFolderCloseRegular,
+  IconFolderOpenRegular,
+  classifyFileType,
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import { fileTree, type ProgramTreeNode } from '../process-list.ts'
 import type { ListedProcess } from '../types.ts'
 import css from './Browse.module.css'
 import type { ProgramConsoleKey } from './locales.ts'
@@ -26,6 +34,105 @@ export interface ProgramBrowseProps {
   readonly openProcess: (pid: number, start: string) => Promise<'opened' | 'taken'>
 }
 
+/** Directory paths that are open, and file paths whose process list is open. */
+interface TreeExpansion {
+  readonly directories: ReadonlySet<string>
+  readonly processes: ReadonlySet<string>
+  readonly toggleDirectory: (path: string) => void
+  readonly toggleProcesses: (path: string) => void
+  readonly openProcess: ProgramBrowseProps['openProcess']
+  readonly onTaken: (taken: boolean) => void
+  readonly t: ProgramBrowseProps['t']
+}
+
+/**
+ * Flip one path in an expansion set.
+ * @param current - Paths that are open.
+ * @param path - Path to open or close.
+ * @returns the next set.
+ */
+function toggled(current: ReadonlySet<string>, path: string): ReadonlySet<string> {
+  const next = new Set(current)
+  if (next.has(path)) next.delete(path)
+  else next.add(path)
+  return next
+}
+
+/**
+ * Render one directory level.
+ * @param props - Nodes and the shared expansion state.
+ * @returns the list for this parent.
+ */
+function TreeLevel({ nodes, tree }: { readonly nodes: readonly ProgramTreeNode[]; readonly tree: TreeExpansion }): ReactNode {
+  return (
+    <ul className={css.level}>
+      {nodes.map(node => <TreeRow key={node.path} node={node} tree={tree} />)}
+    </ul>
+  )
+}
+
+/**
+ * Render one directory or file, and its process window when that file is open.
+ * @param props - The node and the shared expansion state.
+ * @returns the row and any open children.
+ */
+function TreeRow({ node, tree }: { readonly node: ProgramTreeNode; readonly tree: TreeExpansion }): ReactNode {
+  const directory = node.children.length > 0
+  const hasProcesses = node.processes.length > 0
+  const directoryOpen = tree.directories.has(node.path)
+  const processesOpen = tree.processes.has(node.path)
+  let icon: ReactNode
+  if (!directory) icon = <FileTypeIcon kind={classifyFileType(node.name)} size={16} className={css.fileIcon} />
+  else if (directoryOpen) icon = <IconFolderOpenRegular className={css.icon} />
+  else icon = <IconFolderCloseRegular className={css.icon} />
+  return (
+    <li className={css.item} data-program-console-path={node.path}>
+      <div className={css.row}>
+        <button
+          type="button"
+          className={css.action}
+          aria-expanded={directory ? directoryOpen : processesOpen}
+          onClick={() => {
+            if (directory) tree.toggleDirectory(node.path)
+            else tree.toggleProcesses(node.path)
+          }}
+        >
+          {icon}
+          <span className={css.name}>{node.name}</span>
+        </button>
+        {hasProcesses && (
+          <button
+            type="button"
+            className={css.chevron}
+            aria-expanded={processesOpen}
+            aria-label={tree.t(processesOpen ? 'browse.collapseProcesses' : 'browse.expandProcesses')}
+            onClick={() => { tree.toggleProcesses(node.path) }}
+          >
+            {processesOpen ? <IconChevronDownOutlineRegular /> : <IconChevronRightOutlineRegular />}
+          </button>
+        )}
+      </div>
+      {directory && directoryOpen && <TreeLevel nodes={node.children} tree={tree} />}
+      {processesOpen && (
+        <div className={css.processWindow} data-program-console="processes">
+          {node.processes.map(entry => (
+            <button
+              key={`${String(entry.pid)}:${entry.start}`}
+              type="button"
+              className={css.process}
+              onClick={() => {
+                void tree.openProcess(entry.pid, entry.start).then((outcome) => { tree.onTaken(outcome === 'taken') })
+              }}
+            >
+              {entry.commandLine}
+            </button>
+          ))}
+        </div>
+      )}
+    </li>
+  )
+}
+
 /**
  * Render the program tree and the new-command dialog.
  * @param props - Copy and host callbacks.
@@ -34,8 +141,9 @@ export interface ProgramBrowseProps {
 export function ProgramBrowse({ t, list, launch, openProcess }: ProgramBrowseProps): ReactNode {
   const [nonce, setNonce] = useState(0)
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
-  const [groups, setGroups] = useState<readonly { exe: string; processes: readonly ListedProcess[] }[]>([])
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  const [roots, setRoots] = useState<readonly ProgramTreeNode[]>([])
+  const [directories, setDirectories] = useState<ReadonlySet<string>>(new Set())
+  const [processes, setProcesses] = useState<ReadonlySet<string>>(new Set())
   const [dialog, setDialog] = useState(false)
   const [command, setCommand] = useState('')
   const [dialogError, setDialogError] = useState<string | undefined>(undefined)
@@ -46,7 +154,7 @@ export function ProgramBrowse({ t, list, launch, openProcess }: ProgramBrowsePro
     setStatus('loading')
     list().then((rows) => {
       if (!live) return
-      setGroups(groupByExe(rows))
+      setRoots(fileTree(rows))
       setStatus('ready')
     }, (error: unknown) => {
       // The page reports the failure; the list can be requested again.
@@ -56,15 +164,6 @@ export function ProgramBrowse({ t, list, launch, openProcess }: ProgramBrowsePro
     })
     return () => { live = false }
   }, [list, nonce])
-
-  const toggle = (exe: string): void => {
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (next.has(exe)) next.delete(exe)
-      else next.add(exe)
-      return next
-    })
-  }
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault()
@@ -83,6 +182,16 @@ export function ProgramBrowse({ t, list, launch, openProcess }: ProgramBrowsePro
     })
   }
 
+  const tree: TreeExpansion = {
+    directories,
+    processes,
+    toggleDirectory: (path) => { setDirectories(current => toggled(current, path)) },
+    toggleProcesses: (path) => { setProcesses(current => toggled(current, path)) },
+    openProcess,
+    onTaken: setTaken,
+    t,
+  }
+
   return (
     <section className={css.page} data-program-console="browse">
       <div className={css.toolbar}>
@@ -92,28 +201,10 @@ export function ProgramBrowse({ t, list, launch, openProcess }: ProgramBrowsePro
       {taken && <p className={css.alert} role="alert">{t('browse.taken')}</p>}
       {status === 'loading' && <p role="status">{t('browse.loading')}</p>}
       {status === 'failed' && <p className={css.alert} role="alert">{t('browse.listFailed')}</p>}
-      {status === 'ready' && groups.length === 0 && <p>{t('browse.empty')}</p>}
-      {status === 'ready' && groups.length > 0 && (
+      {status === 'ready' && roots.length === 0 && <p>{t('browse.empty')}</p>}
+      {status === 'ready' && roots.length > 0 && (
         <div className={css.tree}>
-          {groups.map(group => (
-            <div key={group.exe}>
-              <button type="button" className={css.file} aria-expanded={expanded.has(group.exe)} onClick={() => { toggle(group.exe) }}>
-                {group.exe}
-              </button>
-              {expanded.has(group.exe) && group.processes.map(entry => (
-                <button
-                  key={`${String(entry.pid)}:${entry.start}`}
-                  type="button"
-                  className={css.process}
-                  onClick={() => {
-                    void openProcess(entry.pid, entry.start).then((outcome) => { setTaken(outcome === 'taken') })
-                  }}
-                >
-                  {entry.commandLine}
-                </button>
-              ))}
-            </div>
-          ))}
+          <TreeLevel nodes={roots} tree={tree} />
         </div>
       )}
       {dialog && (

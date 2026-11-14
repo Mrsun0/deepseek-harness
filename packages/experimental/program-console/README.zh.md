@@ -30,7 +30,7 @@ plugins:
     name: '@deepseek-ai/dsh-program-console'
 ```
 
-入口打开两层列表。第一层是可执行文件路径，第二层是解析到该路径的进程。选择进程时，若已有控制台则聚焦，包括另一个会话创建的控制台；没有时才新建。新建命令在 Linux 上是 `bash -c`，在 Windows 上是 `cmd.exe /d /s /c`，经 `subprocess.spawn` 执行。
+入口打开可执行路径的文件树。目录是文件之上的路径分段，文件只在有进程解析到该路径时出现。悬停文件时出现右箭头，展开后的进程在十行窗口里滚动。选择进程时，若已有控制台则聚焦，包括另一个会话创建的控制台；没有时才新建。新建命令在 Linux 上是 `bash -c`，在 Windows 上是 `cmd.exe /d /s /c`，经 `subprocess.spawn` 执行。
 
 -----
 

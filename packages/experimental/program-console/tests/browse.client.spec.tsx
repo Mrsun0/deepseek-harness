@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
@@ -14,12 +17,30 @@ import { apply } from '../src/client/index.ts'
 import { ConsoleOpener } from '../src/client/Opener.tsx'
 
 const t = (key: string): string => key
+
+function processToggle(path: string): HTMLElement {
+  const button = document.querySelector(`[data-program-console-path="${path}"] > div > button[aria-label]`)
+  if (!(button instanceof HTMLElement)) throw new Error(`missing process toggle for ${path}`)
+  return button
+}
 const row: ListedProcess = { pid: 7, start: '70', exe: '/usr/bin/node', commandLine: 'node loop' }
 
 function binding(sessionId: string): ConsoleBinding {
   return {
     key: '7\n70', pid: 7, start: '70', exe: '/usr/bin/node', commandLine: 'node loop', sessionId, createdAt: 1,
   }
+}
+
+/** jsdom does not load CSS modules, so the scroll test installs the browse sheet itself. */
+function installBrowseStyles(treeClass: string, windowClass: string): HTMLStyleElement {
+  const directory = dirname(fileURLToPath(import.meta.url))
+  const text = readFileSync(resolve(directory, '../src/client/Browse.module.css'), 'utf8')
+    .replaceAll('.processWindow', `.${windowClass}`)
+    .replaceAll('.tree', `.${treeClass}`)
+  const stylesheet = document.createElement('style')
+  stylesheet.textContent = text
+  document.head.append(stylesheet)
+  return stylesheet
 }
 
 describe('program console browse', () => {
@@ -61,25 +82,38 @@ describe('program console browse', () => {
     await Promise.resolve()
   })
 
-  it('expands an executable, opens or refuses its process, and launches a command', async () => {
+  it('expands directories before a file, then its processes, and launches a command', async () => {
     let outcome: 'opened' | 'taken' = 'taken'
     const launch = vi.fn<(command: string) => Promise<void>>()
     launch.mockResolvedValue(undefined)
+    const prefix = { ...row, pid: 4, start: '40', exe: '/usr/bin', commandLine: 'bin itself' }
     const view = render(createElement(ProgramBrowse, {
       t,
-      list: () => Promise.resolve([row, { ...row, pid: 8, start: '80', commandLine: 'node other' }]),
+      list: () => Promise.resolve([row, { ...row, pid: 8, start: '80', commandLine: 'node other' }, prefix]),
       launch,
       openProcess: async () => outcome,
     }))
-    expect(await screen.findByText('/usr/bin/node')).toBeTruthy()
-    fireEvent.click(screen.getByText('/usr/bin/node'))
+    expect(await screen.findByText('usr')).toBeTruthy()
+    expect(screen.queryByText('bin')).toBeNull()
+    fireEvent.click(screen.getByText('usr'))
+    fireEvent.click(screen.getByText('bin'))
+    expect(screen.getByText('node')).toBeTruthy()
+    expect(screen.queryByText('node loop')).toBeNull()
+    expect(screen.queryByText('bin itself')).toBeNull()
+    fireEvent.click(processToggle('/usr/bin'))
+    expect(screen.getByText('bin itself')).toBeTruthy()
+    fireEvent.click(processToggle('/usr/bin'))
+    expect(screen.queryByText('bin itself')).toBeNull()
+    fireEvent.click(screen.getByText('node'))
     fireEvent.click(screen.getByText('node loop'))
     expect(await screen.findByText('browse.taken')).toBeTruthy()
     outcome = 'opened'
     fireEvent.click(screen.getByText('node other'))
     await waitFor(() => { expect(screen.queryByText('browse.taken')).toBeNull() })
-    fireEvent.click(screen.getByText('/usr/bin/node'))
+    fireEvent.click(screen.getByText('node'))
     expect(screen.queryByText('node loop')).toBeNull()
+    fireEvent.click(screen.getByText('bin'))
+    expect(screen.queryByText('node')).toBeNull()
 
     fireEvent.click(screen.getByText('browse.new'))
     fireEvent.click(screen.getByText('browse.start'))
@@ -96,6 +130,33 @@ describe('program console browse', () => {
     fireEvent.click(screen.getByText('browse.new'))
     fireEvent.click(screen.getByText('browse.cancel'))
     expect(screen.queryByLabelText('browse.command')).toBeNull()
+    view.unmount()
+  })
+
+  it('keeps every process reachable inside a ten-row window', async () => {
+    const many = Array.from({ length: 11 }, (_, index) => ({
+      pid: index + 1,
+      start: String(index + 1),
+      exe: '/bin/true',
+      commandLine: `true ${String(index)}`,
+    }))
+    const view = render(createElement(ProgramBrowse, {
+      t,
+      list: () => Promise.resolve(many),
+      launch: async () => {},
+      openProcess: async (): Promise<'opened' | 'taken'> => 'opened',
+    }))
+    fireEvent.click(await screen.findByText('bin'))
+    fireEvent.click(screen.getByText('true'))
+    const processWindow = view.container.querySelector('[data-program-console="processes"]')
+    const tree = processWindow?.parentElement?.parentElement?.parentElement
+    if (!(processWindow instanceof HTMLElement) || !(tree instanceof HTMLElement)) throw new Error('missing process window')
+    const stylesheet = installBrowseStyles(tree.className, processWindow.className)
+    expect(getComputedStyle(processWindow).overflowY).toBe('auto')
+    expect(getComputedStyle(processWindow).maxHeight).toBe('calc(10 * var(--program-console-row))')
+    expect(getComputedStyle(tree).getPropertyValue('--program-console-row').trim()).toBe('32px')
+    stylesheet.remove()
+    for (let index = 0; index < 11; index += 1) expect(screen.getByText(`true ${String(index)}`)).toBeTruthy()
     view.unmount()
   })
 

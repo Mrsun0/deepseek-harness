@@ -3,6 +3,7 @@ import {
   chooseLaunched,
   consoleAddress,
   ensureConsole,
+  fileTree,
   groupByExe,
   keyFromAddress,
   normalizeCommand,
@@ -37,6 +38,41 @@ describe('process list', () => {
       { pid: 10, start: '100', exe: '/usr/bin/node', commandLine: 'node -e loop' },
       { pid: 11, start: '200', exe: 'C:\\Windows\\node.exe', commandLine: 'node\tone' },
       { pid: 12, start: '300', exe: '/bin/sleep', commandLine: '12' },
+    ])
+  })
+
+  it('builds a file tree and keeps processes only on the executable path', () => {
+    expect(fileTree([])).toEqual([])
+    expect(fileTree([{ ...node, exe: '///' }])).toEqual([])
+    const child = { ...node, exe: '/opt/sub/node', commandLine: 'child' }
+    const leaf = { ...node, pid: 12, exe: '/opt/file', commandLine: 'leaf' }
+    const windows = { ...node, pid: 13, exe: 'C:\\Windows\\node.exe', commandLine: 'windows' }
+    const prefix = { ...bash, exe: '/usr/bin', commandLine: 'bin itself' }
+    expect(fileTree([leaf, child, windows, node, { ...node, pid: 11 }, prefix])).toEqual([
+      {
+        name: 'C:', path: 'C:', processes: [], children: [
+          { name: 'Windows', path: 'C:\\Windows', processes: [], children: [
+            { name: 'node.exe', path: 'C:\\Windows\\node.exe', processes: [windows], children: [] },
+          ] },
+        ],
+      },
+      {
+        name: 'opt', path: '/opt', processes: [], children: [
+          { name: 'sub', path: '/opt/sub', processes: [], children: [
+            { name: 'node', path: '/opt/sub/node', processes: [child], children: [] },
+          ] },
+          { name: 'file', path: '/opt/file', processes: [leaf], children: [] },
+        ],
+      },
+      {
+        name: 'usr', path: '/usr', processes: [], children: [
+          {
+            name: 'bin', path: '/usr/bin', processes: [prefix], children: [
+              { name: 'node', path: '/usr/bin/node', processes: [node, { ...node, pid: 11 }], children: [] },
+            ],
+          },
+        ],
+      },
     ])
   })
 

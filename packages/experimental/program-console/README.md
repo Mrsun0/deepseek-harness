@@ -27,7 +27,7 @@ plugins:
     name: '@deepseek-ai/dsh-program-console'
 ```
 
-The guide opens a two-level list. The first level is an executable path. The second level is the processes that resolved to it. Choosing a process focuses its Console when one is already bound, including a Console created by another session, and creates one only when the process has none. New command runs the dialog text as `bash -c` on Linux or `cmd.exe /d /s /c` on Windows through `subprocess.spawn`.
+The guide opens a file tree of executable paths. Directories are the segments above a file, and a file appears only when a process resolved to it. Hovering a file shows a right arrow that opens its processes in a ten-row scrolling window. Choosing a process focuses its Console when one is already bound, including a Console created by another session, and creates one only when the process has none. New command runs the dialog text as `bash -c` on Linux or `cmd.exe /d /s /c` on Windows through `subprocess.spawn`.
 
 ## Model Experience
 
