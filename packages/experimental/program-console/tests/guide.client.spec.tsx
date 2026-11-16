@@ -438,6 +438,12 @@ interface InjectedCalls {
   selectConsole?: (pid: number) => Promise<void>
 }
 
+function bindOpenerWatch(watch: InjectedCalls['watchConsoles']): () => void {
+  if (watch === undefined) throw new Error('watch missing')
+  if (watch.length !== 0) throw new Error('expected a no-argument opener watch')
+  return (watch as () => () => void)()
+}
+
 describe('program console client apply', () => {
   it('mounts the remote and opens a console for this session only', async () => {
     const entries: { name: string; key?: string; inject?: (sessionId: SessionId) => InjectedCalls }[] = []
@@ -560,8 +566,7 @@ describe('program console client apply', () => {
     if (opener?.inject === undefined) throw new Error('opener inject missing')
     const first = opener.inject('session' as SessionId)
     expect(opener.inject('session' as SessionId)).toBe(first)
-    if (first.watchConsoles === undefined) throw new Error('watch missing')
-    const release = first.watchConsoles()
+    const release = bindOpenerWatch(first.watchConsoles)
     release()
     bound = true
     remote.consoles.mockResolvedValue({
@@ -569,9 +574,7 @@ describe('program console client apply', () => {
       value: [{ ...binding('next'), createdAt: Date.now() }],
     })
     vi.useFakeTimers()
-    const nextWatch = opener.inject('next' as SessionId).watchConsoles
-    if (nextWatch === undefined) throw new Error('watch missing')
-    const second = nextWatch()
+    const second = bindOpenerWatch(opener.inject('next' as SessionId).watchConsoles)
     expect(subscribe).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(300)
     await Promise.resolve()

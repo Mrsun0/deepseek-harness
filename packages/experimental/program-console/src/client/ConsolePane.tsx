@@ -123,7 +123,7 @@ function StatusLight({
   readonly status: ConsoleStatus
   readonly label: string
   readonly selectable: boolean
-  readonly onSelect?: () => void
+  readonly onSelect?: (() => void) | undefined
 }): ReactNode {
   const tone = status === 'active' ? css.lightActive : status === 'ready' ? css.lightReady : css.lightIdle
   if (selectable) {
@@ -192,15 +192,15 @@ export interface ConsoleBodyProps {
   /** Locale function. */
   readonly t: (key: ProgramConsoleKey) => string
   /** Look up the current binding when the tab remounts. */
-  readonly lookup?: ConsolePaneInjected['lookup']
+  readonly lookup?: ConsolePaneInjected['lookup'] | undefined
   /** Write typed input to the bound process PTY. */
-  readonly writeConsole?: ConsolePaneInjected['writeConsole']
+  readonly writeConsole?: ConsolePaneInjected['writeConsole'] | undefined
   /** Resize the bound process PTY. */
-  readonly resizeConsole?: ConsolePaneInjected['resizeConsole']
+  readonly resizeConsole?: ConsolePaneInjected['resizeConsole'] | undefined
   /** Follow bound-process terminal output. */
-  readonly followConsole?: ConsolePaneInjected['followConsole']
+  readonly followConsole?: ConsolePaneInjected['followConsole'] | undefined
   /** Follow Console bindings and their status. */
-  readonly watchConsoles?: ConsolePaneInjected['watchConsoles']
+  readonly watchConsoles?: ConsolePaneInjected['watchConsoles'] | undefined
 }
 
 /**
@@ -236,11 +236,11 @@ function BoundConsole({
   readonly pid: number
   readonly start: string
   readonly t: (key: ProgramConsoleKey) => string
-  readonly lookup?: ConsolePaneInjected['lookup']
-  readonly writeConsole?: ConsolePaneInjected['writeConsole']
-  readonly resizeConsole?: ConsolePaneInjected['resizeConsole']
-  readonly followConsole?: ConsolePaneInjected['followConsole']
-  readonly watchConsoles?: ConsolePaneInjected['watchConsoles']
+  readonly lookup?: ConsolePaneInjected['lookup'] | undefined
+  readonly writeConsole?: ConsolePaneInjected['writeConsole'] | undefined
+  readonly resizeConsole?: ConsolePaneInjected['resizeConsole'] | undefined
+  readonly followConsole?: ConsolePaneInjected['followConsole'] | undefined
+  readonly watchConsoles?: ConsolePaneInjected['watchConsoles'] | undefined
 }): ReactNode {
   const [binding, setBinding] = useState<ConsoleBinding | undefined>(undefined)
   const [ready, setReady] = useState(lookup === undefined)

@@ -4,7 +4,7 @@ import { HarnessError } from '@deepseek-ai/dsh-error'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import type { SubprocessHandle, SubprocessOutcome, SubprocessSpawnSpec, SubprocessTerminalHandle, SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import type { ToolExecution, ToolExecutionResult, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as ProgramConsolePlugin from '../src/index.ts'
@@ -25,11 +25,11 @@ function agent(id: string): Agent {
   return { id: id as SessionId, session: { id: id as SessionId } } as Agent
 }
 
-function execution(command: string, caller: Agent | undefined, callId: string): ToolExecution {
+function execution(command: string, caller: Agent | undefined, callId: string): ToolRunContext {
   return toolExecution('bash', { command }, caller, callId)
 }
 
-function toolExecution(name: string, args: Record<string, unknown>, caller: Agent | undefined, callId: string): ToolExecution {
+function toolExecution(name: string, args: Record<string, unknown>, caller: Agent | undefined, callId: string): ToolRunContext {
   return {
     name,
     arguments: args,
@@ -38,6 +38,8 @@ function toolExecution(name: string, args: Record<string, unknown>, caller: Agen
     rootCallId: callId as ToolExecution['rootCallId'],
     token: Symbol(callId) as ToolExecution['token'],
     signal: new AbortController().signal,
+    deferContext: () => {},
+    concludeTurn: () => {},
   }
 }
 
@@ -67,7 +69,7 @@ function fakeHandle(done: Promise<SubprocessOutcome>, text?: string): Subprocess
 interface RegisteredTool {
   readonly name: string
   readonly description: string
-  execute: (args: Record<string, unknown>, exec: ToolExecution) => Promise<unknown>
+  execute: (args: Record<string, unknown>, exec: ToolRunContext) => Promise<unknown>
 }
 
 async function boot(): Promise<{ ctx: Context; dispose: () => Promise<void> }> {
