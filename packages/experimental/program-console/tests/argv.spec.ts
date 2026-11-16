@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enumerateArgv, launchArgv, LINUX_ENUMERATE_SCRIPT, WINDOWS_ENUMERATE_SCRIPT } from '../src/argv.ts'
+import { enumerateArgv, launchArgv, launchTerminalArgv, LINUX_ENUMERATE_SCRIPT, WINDOWS_ENUMERATE_SCRIPT } from '../src/argv.ts'
 
 describe('program console argv', () => {
   it('enumerates with the Linux proc commands and launches through bash -c', () => {
@@ -18,5 +18,16 @@ describe('program console argv', () => {
     expect(enumerateArgv('win32')[0]).toBe('powershell.exe')
     expect(enumerateArgv('win32').at(-1)).toBe(WINDOWS_ENUMERATE_SCRIPT)
     expect(launchArgv('win32', 'ping -n 30 127.0.0.1')).toEqual(['cmd.exe', '/d', '/s', '/c', 'ping -n 30 127.0.0.1'])
+  })
+
+  it('starts the launch terminal with the default interactive shell', () => {
+    expect(launchTerminalArgv('linux', {})).toEqual(['/bin/bash', '-i'])
+    expect(launchTerminalArgv('linux', { SHELL: '/bin/zsh' })).toEqual(['/bin/zsh', '-i'])
+    expect(launchTerminalArgv('win32', {})).toEqual(['cmd.exe'])
+    expect(launchTerminalArgv('win32', { ComSpec: 'C:\\Windows\\System32\\cmd.exe' })).toEqual(['C:\\Windows\\System32\\cmd.exe'])
+    expect(launchTerminalArgv('win32', { ComSpec: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' })).toEqual([
+      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      '-NoLogo',
+    ])
   })
 })

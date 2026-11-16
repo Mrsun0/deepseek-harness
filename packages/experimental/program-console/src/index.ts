@@ -19,7 +19,7 @@ const RESOURCE_BASE = {
   path: fileURLToPath(new URL('../assets/', import.meta.url)),
 } as const
 const INVOCATION = { modelInvocable: true, userInvocable: true } as const
-const DESCRIPTION = 'Start the program console process with the bash tool on Linux or the pwsh tool on Windows, using the launch command in this skill. Use when the user asks to open a program console or start its program.'
+const DESCRIPTION = 'Start an interactive program in a bound Console with program_console_launch, or type into a Console the user already started. Each turn\'s program-console context lists the current Console ids, their state, the program running in each, and the unique active (green) id. Trust that list: ignore process ids from earlier turns that are not listed, and do not use bash, ps, or pwsh to find or type into Consoles. If the active Console already has a program, type into it with program_console_write; do not launch a duplicate. Switch the active Console with program_console_select, or when the user picks one with /console. Use when the user asks to open a program console, or when you need a REPL, debugger, or any process the user should type into in a Console.'
 
 const CANDIDATE: SkillCandidate = {
   name: 'program-console',
@@ -51,11 +51,21 @@ const provider: SkillProvider = {
 /** Cordis plugin name. */
 export const name = 'program-console'
 
-/** The skill registry must be present before the provider is registered. */
-export const inject = ['skills']
+/** The skill registry and tool registry must be present before the provider and the launch, write, and select tools are registered. */
+export const inject = ['skills', 'tools']
 
-export type { ConsoleBinding, ConsoleOpenResult, ListedProcess, ProcessGroup } from './types.ts'
-export { ProgramConsole } from './service.ts'
+export type { ConsoleBinding, ConsoleOpenResult, ConsoleStatus, ListedProcess, ProcessGroup } from './types.ts'
+export {
+  ProgramConsole,
+  PROGRAM_CONSOLE_LAUNCH_TOOL,
+  PROGRAM_CONSOLE_SELECT_TOOL,
+  PROGRAM_CONSOLE_WRITE_TOOL,
+} from './service.ts'
+export {
+  PROGRAM_CONSOLE_CONTEXT_NAME,
+  PROGRAM_CONSOLE_CONTEXT_ORDER,
+  formatConsoleContext,
+} from './status.ts'
 export { PROGRAM_CONSOLE_LAUNCH_COMMAND } from './skill-file.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -66,8 +76,8 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /**
- * Register the bundled skill, then start the Console service.
- * @param ctx - Root context that already provides `skills` and `subprocess`.
+ * Register the bundled skill, then start the Console service and the launch, write, and select tools.
+ * @param ctx - Root context that already provides `skills`, `tools`, and `subprocess`.
  */
 export async function apply(ctx: Context): Promise<void> {
   ctx.skills.registerProvider(() => provider)

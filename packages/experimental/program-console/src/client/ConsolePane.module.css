@@ -8,3 +8,128 @@
   color: var(--dsw-alias-label-primary);
   font-size: var(--dsh-content-font-size-secondary, 13px);
 }
+
+.console {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  color: #cccccc;
+  background: #1e1e1e;
+  --program-console-font: "Ubuntu Sans Mono", "Noto Sans Mono", var(--ds-font-family-code), "Noto Sans Mono CJK SC", "PingFang SC", "Microsoft YaHei";
+}
+
+.header {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px 8px;
+  color: #cccccc;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  font-family: var(--program-console-font);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 0;
+  color: #6a9955;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 18px;
+}
+
+.command {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #9d9d9d;
+}
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  background: #1e1e1e;
+  overflow: hidden;
+}
+
+.screen :global(.xterm) {
+  height: 100%;
+}
+
+.alert {
+  flex: none;
+  margin: 0;
+  padding: 4px 8px;
+  color: #f0c36d;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.light,
+.lightButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  margin: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--program-console-light-color);
+}
+
+.lightButton {
+  cursor: pointer;
+}
+
+.lightMark {
+  display: block;
+  width: 6px;
+  height: 6px;
+  overflow: visible;
+}
+
+.lightIdle {
+  --program-console-light-color: #ff3b30;
+}
+
+.lightReady {
+  --program-console-light-color: #ffb000;
+}
+
+.lightActive {
+  --program-console-light-color: #30f064;
+}
+
+.activeHint {
+  margin: 0;
+  color: #cccccc;
+  font-size: 12px;
+  line-height: 1.4;
+}

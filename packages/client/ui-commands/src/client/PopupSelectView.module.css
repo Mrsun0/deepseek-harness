@@ -60,6 +60,14 @@
   min-width: 0;
 }
 
+.swatch {
+  flex-shrink: 0;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
 .labelText {
   min-width: 0;
   white-space: nowrap;

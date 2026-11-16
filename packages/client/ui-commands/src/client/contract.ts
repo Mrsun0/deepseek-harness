@@ -29,6 +29,8 @@ export interface SelectOption {
   readonly label: string
   /** Optional short marker rendered as a superscript beside the label. */
   readonly badge?: string
+  /** Optional CSS color for a small dot rendered before the label. */
+  readonly swatch?: string
   readonly detail?: string
   /** Equal group names share a sticky heading; groups retain first-occurrence order. */
   readonly group?: SelectOptionGroup

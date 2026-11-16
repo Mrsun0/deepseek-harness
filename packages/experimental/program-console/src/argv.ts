@@ -1,5 +1,5 @@
 /**
- * Argument vectors for process enumeration and for launching a command without a PTY.
+ * Argument vectors for process enumeration and for launching a command.
  * @module @deepseek-ai/dsh-program-console/argv
  */
 
@@ -43,13 +43,38 @@ export function enumerateArgv(platform: NodeJS.Platform): readonly string[] {
 }
 
 /**
- * Arguments that run one user command as an ordinary child process.
+ * Arguments that run one user command through the system shell.
  * Windows uses `cmd.exe /d /s /c`. Linux uses `bash -c`, the same form as bash-local.
+ * Used as the argv of a `launch()` PTY and of any ordinary child process.
  * @param platform - `process.platform` of the host.
- * @param command - The full command from the dialog or the skill.
- * @returns the argv passed to `subprocess.spawn`.
+ * @param command - The full command from the dialog, the launch tool, or the skill.
+ * @returns the argv passed to `subprocess.spawnTerminal` or `subprocess.spawn`.
  */
 export function launchArgv(platform: NodeJS.Platform, command: string): readonly string[] {
   if (platform === 'win32') return ['cmd.exe', '/d', '/s', '/c', command]
   return ['bash', '-c', command]
+}
+
+/**
+ * Arguments that start an interactive shell in a user Console.
+ * Unix uses `$SHELL` or `/bin/bash`. Windows uses `%ComSpec%` or `cmd.exe`.
+ * @param platform - `process.platform` of the host.
+ * @param env - Process environment providing `SHELL` or `ComSpec`.
+ * @returns the argv passed to `subprocess.spawnTerminal`.
+ */
+export function launchTerminalArgv(platform: NodeJS.Platform, env: NodeJS.ProcessEnv = process.env): readonly string[] {
+  if (platform === 'win32') {
+    const shell = env.ComSpec?.trim() || 'cmd.exe'
+    const name = fileName(shell).toLowerCase()
+    if (name === 'powershell' || name === 'powershell.exe' || name === 'pwsh' || name === 'pwsh.exe') {
+      return [shell, '-NoLogo']
+    }
+    return [shell]
+  }
+  return [env.SHELL?.trim() || '/bin/bash', '-i']
+}
+
+function fileName(path: string): string {
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return slash < 0 ? path : path.slice(slash + 1)
 }

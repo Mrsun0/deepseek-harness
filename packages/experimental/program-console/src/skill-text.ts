@@ -8,7 +8,7 @@ const MARKER = 'launch-command:'
 /**
  * Read the `launch-command:` line from the skill body.
  * @param markdown - Skill markdown.
- * @returns the command the model passes to bash or pwsh.
+ * @returns the example keep-alive command from the skill.
  * @throws when the skill has no command.
  */
 export function launchCommand(markdown: string): string {
