@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for 2026-11-16-program-console-bound-pty.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-16-program-console-bound-pty.md
+/agent-note-program-consoles-bound-to-a-held-pty:
+  en: 39e229a4813bb732
+  zh: f86b23fb68fd25dc
+/agent-note-program-consoles-bound-to-a-held-pty/problem:
+  en: 44f213251fd4fd3f
+  zh: 067c92c3641e187c
+/agent-note-program-consoles-bound-to-a-held-pty/decision:
+  en: 6f926454c5266853
+  zh: 183444f9006f1057
+/agent-note-program-consoles-bound-to-a-held-pty/decision/held-pty-and-two-start-paths:
+  en: 236a26c1b4f20bdd
+  zh: bab84da4b3745e85
+/agent-note-program-consoles-bound-to-a-held-pty/decision/sidebar-presentation:
+  en: b1c58ffe30983930
+  zh: f8073da4f39c31c5
+/agent-note-program-consoles-bound-to-a-held-pty/decision/unique-active-target-lights-and-console:
+  en: 143911649bedd437
+  zh: 8a063b1d8e541b2c
+/agent-note-program-consoles-bound-to-a-held-pty/decision/runtime-context-and-model-tools:
+  en: d9654988e7904c63
+  zh: f2c0230e21ed2124
+/agent-note-program-consoles-bound-to-a-held-pty/decision/constraints-that-shipped:
+  en: d527c557da58c30a
+  zh: d8e44cb79bd0b6ca
+/agent-note-program-consoles-bound-to-a-held-pty/development-history:
+  en: 85693edf001e1df3
+  zh: 76dd038491833804
+/agent-note-program-consoles-bound-to-a-held-pty/alternatives-considered:
+  en: 3228ec5074e72424
+  zh: 2b2ba328a4ef84b8
+/agent-note-program-consoles-bound-to-a-held-pty/consequences:
+  en: 541daf4ac35a4c0d
+  zh: 4466bdd3a1990d3a
+/agent-note-program-consoles-bound-to-a-held-pty/testing:
+  en: d534e4f88b8282c5
+  zh: b68cacba6a35e64a
+/agent-note-program-consoles-bound-to-a-held-pty/related:
+  en: e48ecbdebf7e6b92
+  zh: 11d0fcd833afcece

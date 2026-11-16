@@ -5,7 +5,7 @@ import { CONSOLE_WATCH_DELAY_MS, watchConsoles } from '../src/client/watch.ts'
 function binding(key: string, sessionId: string, createdAt: number): ConsoleBinding {
   const [pid, start] = key.split('\n')
   return {
-    key, pid: Number(pid), start: start ?? '', exe: '/bin/node', commandLine: 'node', sessionId, createdAt,
+    key, pid: Number(pid), start: start ?? '', exe: '/bin/node', commandLine: 'node', sessionId, createdAt, attachable: false, status: 'idle',
   }
 }
 

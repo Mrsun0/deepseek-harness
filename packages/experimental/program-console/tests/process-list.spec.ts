@@ -3,7 +3,6 @@ import {
   chooseLaunched,
   consoleAddress,
   ensureConsole,
-  programPaths,
   groupByExe,
   keyFromAddress,
   normalizeCommand,
@@ -41,40 +40,6 @@ describe('process list', () => {
     ])
   })
 
-  it('normalizes executable paths for the workspace file tree', () => {
-    expect(programPaths([])).toEqual({ entries: [], byPath: new Map() })
-    expect(programPaths([
-      { ...node, exe: '///' },
-      { ...node, exe: '' },
-      { ...node, exe: '\\' },
-      { ...node, exe: '/' },
-    ])).toEqual({ entries: [], byPath: new Map() })
-    const child = { ...node, exe: '/opt//sub/node/', commandLine: 'child' }
-    const leaf = { ...node, pid: 12, exe: '/opt/file', commandLine: 'leaf' }
-    const windows = { ...node, pid: 13, exe: 'C:\\Windows\\node.exe', commandLine: 'windows' }
-    const prefix = { ...bash, exe: '/usr/bin', commandLine: 'bin itself' }
-    const bare = { ...node, pid: 14, exe: 'node', commandLine: 'bare' }
-    const same = { ...node, pid: 11, exe: '\\usr\\bin\\node' }
-    expect(programPaths([leaf, child, windows, node, same, prefix, bare])).toEqual({
-      entries: [
-        { path: '/opt/file', name: 'file' },
-        { path: '/opt/sub/node', name: 'node' },
-        { path: 'C:/Windows/node.exe', name: 'node.exe' },
-        { path: '/usr/bin/node', name: 'node' },
-        { path: '/usr/bin', name: 'bin' },
-        { path: 'node', name: 'node' },
-      ],
-      byPath: new Map([
-        ['/opt/file', [leaf]],
-        ['/opt/sub/node', [child]],
-        ['C:/Windows/node.exe', [windows]],
-        ['/usr/bin/node', [node, same]],
-        ['/usr/bin', [prefix]],
-        ['node', [bare]],
-      ]),
-    })
-  })
-
   it('groups processes under the executable they resolved to', () => {
     expect(groupByExe([])).toEqual([])
     expect(groupByExe([node, { ...node, pid: 11 }, bash])).toEqual([
@@ -91,7 +56,7 @@ describe('process list', () => {
       created: true,
       binding: {
         key: processKey(10, '100'), pid: 10, start: '100', exe: '/usr/bin/node',
-        commandLine: node.commandLine, sessionId: 'session-a', createdAt: 50,
+        commandLine: node.commandLine, sessionId: 'session-a', createdAt: 50, attachable: false, status: 'idle',
       },
     })
     expect(again).toEqual({ created: false, binding: created.binding })

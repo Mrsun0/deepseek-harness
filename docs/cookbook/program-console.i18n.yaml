@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for program-console.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/cookbook/program-console.md
+/cookbook-program-console:
+  en: 0255e0a93f0a378d
+  zh: 18349d5bac9f30bc
+/cookbook-program-console/1-outcome-and-prerequisites:
+  en: 930342bccddc5679
+  zh: 635c6a7f61d51c65
+/cookbook-program-console/2-how-the-right-sidebar-is-created:
+  en: 1e4f45d1b5875708
+  zh: 773f15e89eed4ea9
+/cookbook-program-console/3-how-the-terminal-pty-is-created:
+  en: 49a913faf04def86
+  zh: 45e453d55d006f7e
+/cookbook-program-console/4-status-lights-and-the-unique-active-target:
+  en: 9d6d29782e42c8b6
+  zh: b74eaf2edfe9a541
+/cookbook-program-console/5-how-console-interacts-with-the-right-sidebar-and-the-model:
+  en: ad12a2b8ad53335f
+  zh: 85c99d6f39aa309c
+/cookbook-program-console/6-what-the-system-ultimately-does:
+  en: de6d2603557db8c1
+  zh: ede1938f96aaadbb
+/cookbook-program-console/7-build-and-reload-notes:
+  en: d4404a775f69d689
+  zh: 45324027ee43d9fa
+/cookbook-program-console/verify:
+  en: e59ca1a7bce6abc5
+  zh: de447854fdcc5b18

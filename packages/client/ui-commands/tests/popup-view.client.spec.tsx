@@ -184,6 +184,21 @@ describe('PopupSelectView', () => {
     expect(row.querySelector('sup')?.textContent).toBe('EXP')
   })
 
+  it('renders an optional color swatch before the label without changing unswatched rows', async () => {
+    await mountOpen({
+      options: () => Promise.resolve([
+        { id: 'active', label: 'Console 9', swatch: '#4caf50', detail: 'Active with the model', active: true },
+        { id: 'plain', label: 'Dark' },
+      ]),
+    })
+    const swatched = screen.getByRole('option', { name: 'Console 9, Active with the model' })
+    const dot = swatched.querySelector('[aria-hidden="true"]') as HTMLElement | null
+    expect(dot).not.toBeNull()
+    expect(dot?.style.background).toBe('rgb(76, 175, 80)')
+    const plain = screen.getByRole('option', { name: 'Dark' })
+    expect(plain.querySelector('[aria-hidden="true"]')).toBeNull()
+  })
+
   it('typing filters rows locally and rebases the highlight', async () => {
     const options = vi.fn(() => Promise.resolve(OPTIONS))
     const { search } = await mountOpen({ options })

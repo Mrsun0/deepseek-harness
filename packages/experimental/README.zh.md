@@ -60,7 +60,7 @@ kind: "package-group"
 | [`terminal-panel`](terminal-panel/README.zh.md) | Web 侧栏中的 Agent 终端与只读的用户终端工具 | — |
 | [`tool-ralph`](tool-ralph/README.zh.md) | 有界重复委派任务 | — |
 | [`skill-badge`](skill-badge/README.zh.md) | powered-by-dsh 徽章技能 | — |
-| [`program-console`](program-console/README.zh.md) | 一个进程一个侧栏控制台，启动时不使用 PTY | `ctx.programConsole` |
+| [`program-console`](program-console/README.zh.md) | 一个进程一个侧栏控制台，绑定宿主持有的 PTY；见[程序控制台手册](../../docs/cookbook/program-console.zh.md) | `ctx.programConsole` |
 | [`translator`](translator/README.zh.md) | 免登录 Google 与 Bing 文本翻译 | `ctx.translator` |
 | [`client-ui-cot-translation`](client-ui-cot-translation/README.zh.md) | 展开的思考内容翻译与原文控件 | `ctx.cotTranslation` |
 | [`cot-translation-bundle`](cot-translation-bundle/README.zh.md) | 默认禁用的思考内容翻译组合 | — |

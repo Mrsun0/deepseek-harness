@@ -23,6 +23,9 @@ export interface ProcessGroup {
   readonly processes: readonly ListedProcess[]
 }
 
+/** Model and tab activity of one Console. */
+export type ConsoleStatus = 'idle' | 'ready' | 'active'
+
 /** One Console bound to one process. */
 export interface ConsoleBinding {
   /** `pid` and `start` joined by a newline. */
@@ -39,6 +42,19 @@ export interface ConsoleBinding {
   readonly sessionId: string
   /** Milliseconds since the Unix epoch when the Console was created. */
   readonly createdAt: number
+  /**
+   * True when this process belongs to a live session whose PTY master the host
+   * still holds — a user-opened shell or a `launch()` session — so the Console
+   * tab can attach to it.
+   */
+  readonly attachable: boolean
+  /**
+   * Activity shown on the tab light and in model context: `idle` (red, no
+   * non-shell process), `ready` (orange, a process has started but this is not
+   * the unique model-active target), or `active` (green, the unique Console
+   * the model should type into).
+   */
+  readonly status: ConsoleStatus
 }
 
 /** Result of focusing an existing Console or creating the only one for a process. */

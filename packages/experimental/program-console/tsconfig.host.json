@@ -12,6 +12,7 @@
     { "path": "../../core/tools" },
     { "path": "../../skill/skill" },
     { "path": "../../subprocess/subprocess" },
+    { "path": "../../core/system-prompt" },
     { "path": "../../typert/protocol" },
     { "path": "../../util/error" }
   ]

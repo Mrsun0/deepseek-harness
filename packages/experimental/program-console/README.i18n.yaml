@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/program-console/README.md
 /:
-  en: ba7f55fa0a1cbdf8
-  zh: b113b54c92740af4
+  en: 426abca4af9c3228
+  zh: 415157783d15ce69
 /deepseek-ai-dsh-program-console:
   en: cff168f37606ab6d
   zh: a1fe84994435b785
 /deepseek-ai-dsh-program-console/summary:
-  en: acac3882e30e8d52
-  zh: 86ee62fd0d57ddb3
+  en: 19a920429b0dfff1
+  zh: 8c34b2ee4cdf7bea
 /deepseek-ai-dsh-program-console/table-of-contents:
   en: d4e9596852e22009
   zh: da80980e684665e2
 /deepseek-ai-dsh-program-console/use-this-package:
-  en: e6aee718a0e822d2
-  zh: 1a86a98b98f501a0
+  en: f2930a5b38ecc8ae
+  zh: de9749bc234c4203
 /deepseek-ai-dsh-program-console/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -24,8 +24,8 @@
   en: 313805866c599257
   zh: 7235cfe12ee2d51a
 /deepseek-ai-dsh-program-console/model-experience/program-console-skill/what-the-model-sees:
-  en: c92d6d7ca3bb40d9
-  zh: 139941726104755e
+  en: 9e36a43f7275f4b8
+  zh: 02ffe11514797265
 /deepseek-ai-dsh-program-console/model-experience/program-console-skill/what-the-model-sees/program-console-skill-body:
   en: 3deca3b373033750
   zh: 262ac865d9f52d98
@@ -36,8 +36,8 @@
   en: ed4c49c18c864d32
   zh: 0192c2ae9ed803f1
 /deepseek-ai-dsh-program-console/known-limitations-and-deferred-work:
-  en: a5bfd18ba9fe05ab
-  zh: 144db99a37d523ed
+  en: ed02409cdb4580ad
+  zh: 8e108d0665577c7b
 /deepseek-ai-dsh-program-console/known-limitations-and-deferred-work/dev-note:
-  en: b3e92812c453d725
-  zh: 785fdc190a8e154d
+  en: 4febc7e204d87dba
+  zh: c2fa9b3892f31614

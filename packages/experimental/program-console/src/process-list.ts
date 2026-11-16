@@ -1,5 +1,5 @@
 /**
- * Parse process listings, normalize executable paths for the workspace file tree, and keep one Console per process.
+ * Parse process listings, choose a launched process, and keep one Console per process.
  * @module @deepseek-ai/dsh-program-console/process-list
  */
 
@@ -80,53 +80,6 @@ function parseProcessLine(line: string): ListedProcess | undefined {
   if (!Number.isSafeInteger(pid) || pid <= 0 || String(pid) !== pidText) return undefined
   const commandLine = parts.slice(3).join('\t').trim()
   return { pid, start, exe, commandLine: commandLine.length > 0 ? commandLine : pidText }
-}
-
-/** One executable path, using `/` so the workspace file tree can split it. */
-export interface ProgramPathEntry {
-  /** Full path. Intermediate directories are not entries. */
-  readonly path: string
-  /** Final segment, drawn as the row name. */
-  readonly name: string
-}
-
-/**
- * Turn one executable path into a workspace-file-tree key.
- * `\` becomes `/`, repeated separators collapse, and a trailing separator is dropped.
- * @param exe - Resolved executable path.
- * @returns the path and its final segment, or undefined when the path has no file name.
- */
-function treePath(exe: string): ProgramPathEntry | undefined {
-  const unified = exe.replaceAll('\\', '/').replaceAll(/\/+/g, '/')
-  const path = unified.length > 1 && unified.endsWith('/') ? unified.slice(0, -1) : unified
-  if (path.length === 0 || path === '/') return undefined
-  const slash = path.lastIndexOf('/')
-  return { path, name: slash < 0 ? path : path.slice(slash + 1) }
-}
-
-/**
- * Normalize executable paths for the workspace file tree and keep the processes on each path.
- * A path that is also a prefix of a deeper executable stays an entry.
- * The tree draws that row as a directory, and the row still lists its processes.
- * @param processes - Processes with readable executable paths.
- * @returns entries in first-seen order, and the processes for each path. A path with no file name is omitted.
- */
-export function programPaths(processes: readonly ListedProcess[]): {
-  readonly entries: readonly ProgramPathEntry[]
-  readonly byPath: ReadonlyMap<string, readonly ListedProcess[]>
-} {
-  const byPath = new Map<string, ListedProcess[]>()
-  const entries: ProgramPathEntry[] = []
-  for (const entry of processes) {
-    const path = treePath(entry.exe)
-    if (path === undefined) continue
-    const list = byPath.get(path.path)
-    if (list === undefined) {
-      byPath.set(path.path, [entry])
-      entries.push(path)
-    } else list.push(entry)
-  }
-  return { entries, byPath }
 }
 
 /**
@@ -217,6 +170,8 @@ export function ensureConsole(
     commandLine: entry.commandLine,
     sessionId,
     createdAt: now,
+    attachable: false,
+    status: 'idle',
   }
   bindings.set(key, binding)
   return { binding, created: true }

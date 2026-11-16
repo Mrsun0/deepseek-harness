@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/program-console.md
 /program-console:
-  en: ce984332737652da
-  zh: 40dfaf113c060b4b
+  en: 52801154ddc1f034
+  zh: 7e47b26127a19081

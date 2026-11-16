@@ -35,6 +35,13 @@ export interface PopupSelectInjected {
 /** Full shell props: injected face + the locale seat. */
 export type PopupSelectViewProps = PopupSelectInjected & PropsLocale<'command'>
 
+/** Accessible name when a badge or a color swatch would otherwise be incomplete. */
+function optionAriaLabel(option: SelectOption): string | undefined {
+  if (option.badge !== undefined) return `${option.label} ${option.badge}`
+  if (option.swatch !== undefined && option.detail !== undefined) return `${option.label}, ${option.detail}`
+  return undefined
+}
+
 /**
  * Render the popupSelect shell overlay entry.
  * @param props - injected face: the session's shell controller; `t` rides the standard locale seat.
@@ -138,12 +145,15 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
       key={option.id}
       role="option"
       aria-selected={index === state.active}
-      aria-label={option.badge === undefined ? undefined : `${option.label} ${option.badge}`}
+      aria-label={optionAriaLabel(option)}
       className={clsx(css.row, index === state.active && css.rowActive)}
       onClick={() => { void popup.select(index) }}
       onMouseEnter={() => { popup.highlight(index) }}
     >
       <span className={css.label}>
+        {option.swatch !== undefined && (
+          <span className={css.swatch} style={{ background: option.swatch }} aria-hidden="true" />
+        )}
         <span className={css.labelText}>{option.label}</span>
         {option.badge !== undefined && <sup className={css.badge}>{option.badge}</sup>}
       </span>

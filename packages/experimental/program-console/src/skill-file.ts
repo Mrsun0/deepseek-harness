@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { launchCommand } from './skill-text.ts'
 
-/** Command the model copies into bash or pwsh. */
+/** Example keep-alive command shipped in the bundled skill file. */
 export const PROGRAM_CONSOLE_LAUNCH_COMMAND = launchCommand(readFileSync(
   new URL('../assets/program-console.md', import.meta.url),
   'utf8',
